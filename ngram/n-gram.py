@@ -21,6 +21,8 @@ td_ngram = {}
 ltop60_2gram = []
 dtop60_2gram = {}
 
+d_op_hex = {}
+
 # top60 2gram 가져오기
 top60_2gram_path = dir_base + "/top60_2gram.txt"
 with open(top60_2gram_path,"r") as f:
@@ -32,7 +34,6 @@ with open(top60_2gram_path,"r") as f:
         l = list(l[:size-1])
         l.append(end)
     ltop60_2gram = l.copy()
-#print(top60_2gram)
 
 tmp = ''
 
