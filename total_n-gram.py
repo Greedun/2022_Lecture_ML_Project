@@ -1,9 +1,14 @@
-# 1. 상위 10개 opcode 추출(V) -> opcode 기반 앞뒤값을 index로서 사용(V)
-# ex) A mov B -> A mov, mov B로 인덱스 구성(0x01 0x02 0x03)=> 0x0102 0x0203이 이름(V)
-# 2. 구성한 BoW를 통해서 카운트 -> csv파일로 생성
-# 3. 생성한 csv파일로 FeedForward에 넣음
+import pandas as pd
+import numpy as np
 
-from gettext import dpgettext
+import tensorflow as tf
+import matplotlib.pyplot as plt
+
+from sklearn.utils import shuffle
+from keras import layers
+
+from sklearn.model_selection import train_test_split
+
 import os, time, sys
 from collections import deque
 
@@ -152,11 +157,19 @@ def opcode_count():
     #print(op)
     #print(len(op))
     sys.exit(1)
+    
+# normalization을 했을때 정확도가가 어떻게 변화하는지 학습습
+def normalization(total_data):
+    total_data = np.float64(total_data)
+    for index in range(len(total_data)):
+        total_data[index] = (total_data[index] - total_data[index].min()) / (total_data[index].max() - total_data[index].min())
+    return total_data
 
 def __main__():
     global d_op_hex
     global opcode_c
     
+    '''
     # dataset폴더가 없다면 생성해주는 기능
     if not os.path.exists(dir_base+'/dataset/'):
         os.mkdir(dir_base+'/dataset/')
@@ -302,7 +315,99 @@ def __main__():
         del dq
         del c_dtop60_2gram
         print("csv파일 생성 완료\n\n")
+    '''    
+    # --------------------------
+    # [ngram model]
+    # ltop60
+    # d_op_hex
     
-        
+    read_top60_2gram()
+    
+    # test
+    be_test = pd.read_csv("dataset/test_benign.csv",names=ltop60_2gram)
+    be_test.insert(0,'label',[0 for i in range(200)])
+    mal_test = pd.read_csv("dataset/test_malware.csv",names=ltop60_2gram)
+    mal_test.insert(0, 'label',[1 for i in range(200)])
+
+    op_test = pd.concat([be_test,mal_test], ignore_index=True)
+    
+    # train
+    be_train = pd.read_csv("dataset/train__benign.csv",names=ltop60_2gram)
+    be_train.insert(0,'label',[0 for i in range(1000)])
+    mal_train = pd.read_csv("dataset/train__malware.csv",names=ltop60_2gram)
+    mal_train.insert(0, 'label',[1 for i in range(1000)])
+
+    op_train = pd.concat([be_train,mal_train], ignore_index=True)
+    
+    # validate
+    be_val = pd.read_csv("dataset/valid__benign.csv",names=ltop60_2gram)
+    be_val.insert(0,'label',[0 for i in range(200)])
+    mal_val = pd.read_csv("dataset/valid__malware.csv",names=ltop60_2gram)
+    mal_val.insert(0, 'label',[1 for i in range(200)])
+
+    op_val = pd.concat([be_val,mal_val], ignore_index=True)
+    
+    
+    # shuffle
+    op_train = shuffle(op_train , random_state=1000)
+    op_val = shuffle(op_val, random_state=1000)
+    op_test = shuffle(op_test, random_state=1000)
+    
+    print(op_train)
+    
+    # split data, label
+    train_data, train_label = op_train.iloc[:, 1:], op_train['label']
+    val_data, val_label = op_val.iloc[:, 1:], op_val['label']
+    test_data, test_label = op_test.iloc[:, 1:], op_test['label']
+    
+    # bring data
+    train_data = train_data.values
+    train_label = train_label.values
+
+    val_data = val_data.values
+    val_label = val_label.values
+
+    test_data = test_data.values
+    test_label = test_label.values
+    
+    
+    # confirm shape
+    print(F"train_data shape : {train_data.shape}")
+    print(F"train_label shape : {train_label.shape}")
+    print(F"valid_data shape : {val_data.shape}")
+    print(F"valid_label shape : {val_label.shape}")
+
+    # create model
+    model = tf.keras.models.Sequential()
+    model.add(layers.Dense(20, activation='relu', input_shape=(60,)))
+    model.add(layers.Dense(1, activation='sigmoid'))
+    
+    model.compile(optimizer='rmsprop',
+            loss='binary_crossentropy',
+            metrics = ['accuracy'])
+    
+    # 정규화
+    n_train_data = normalization(train_data)
+    n_valid_data = normalization(val_data)
+    n_test_data = normalization(test_data)
+    
+    hist = model.fit(n_train_data,train_label, epochs = 500 ,validation_data = (n_valid_data, val_label))
+    score = model.evaluate(n_test_data,test_label)
+    print('정답률 = ', score[1],'loss=', score[0])
+    
+    # model.predict(test_data)
+    
+    # visualization
+    plt.plot(hist.history['accuracy'])
+    plt.plot(hist.history['val_accuracy'])
+    plt.title('Accuracy')
+    plt.legend(['train','test'], loc='upper left')
+    plt.show()
+    plt.plot(hist.history['loss'])
+    plt.plot(hist.history['val_loss'])
+    plt.title('Loss')
+    plt.legend(['train','test'], loc='upper left')
+    plt.show()
+    
     
 __main__()
