@@ -28,7 +28,7 @@ def confirm_command(command, command_d):
 
 def opcode_count():
     op = []
-    opcode_path = dir_base + "/top100_report/opcode.txt"
+    opcode_path = dir_base + "/BoW_MLP_V/top100_report/opcode.txt"
     with open(opcode_path, "r") as f:
             lines = f.readlines()
             for line in lines:
@@ -89,14 +89,14 @@ for cur_data_i in range(len(cur_datas)):
     command_l = sorted(command_l)
     command_d = sorted(command_d.items(), key=lambda x: x[1], reverse=True)
     
-    top100_path = dir_base + "/top100_report/" + cur_datas[cur_data_i] + ".txt" # 여기서부터 고침
+    top100_path = dir_base + "/BoW_MLP_V/top100_report/" + cur_datas[cur_data_i] + ".txt" # 여기서부터 고침
     
     # 파일이 끝났을때 로깅해주는 코드
     # 상위 50개?
     test = []
     with open(top100_path, "w") as f:
         count = 0
-        for i in range(50):
+        for i in range(10):
             count +=1
             string = "("+str(count)+") "+command_d[i][0]+" : "+str(command_d[i][1])+"\n"
             f.write(string)
