@@ -1,12 +1,9 @@
 import pandas as pd
 import numpy as np
-
 import tensorflow as tf
 import matplotlib.pyplot as plt
-
 from sklearn.utils import shuffle
 from keras import layers
-
 from sklearn.model_selection import train_test_split
 
 import os, time, sys
@@ -168,15 +165,17 @@ def normalization(total_data):
 def __main__():
     global d_op_hex
     global opcode_c
-    
     '''
+    print("[import 완료후 main 시작]")
+    
     # dataset폴더가 없다면 생성해주는 기능
     if not os.path.exists(dir_base+'/dataset/'):
         os.mkdir(dir_base+'/dataset/')
 
     # opcode 전체 갯수 count
     #opcode_count()   
-    # top10
+    
+    # top10 opcode
     for op in l_opcode_list:
         # opcode : hex
         num = str(hex(opcode_c))[2:] 
@@ -186,12 +185,14 @@ def __main__():
     # [main]
     # 폴더안에 데이터를 전부 돌면서 2gram 추출
     # 데이터 폴더 이름 추출
-    l_folder = os.listdir(dir_base+data_offset)
+    l_folder = os.listdir(dir_base)
     for f in l_folder:
         if(len(f.split('.'))==1):
-            datas.append(f) #데이터 폴더들 저장
-    del l_folder # 사용다한 main_l 삭제
+            if f != "dataset":
+                datas.append(f) #데이터 폴더들 저장
+    del l_folder
     
+    print("[데이터전처리 시작]")
     # 폴더용(6개)
     #for cur_data_i in range(1): # TEST용
     for cur_data_i in range(len(datas)):
@@ -200,9 +201,9 @@ def __main__():
         command_l = []
         
         # 어떤 데이터 폴더가 진행중인가?
-        print("["+datas[cur_data_i]+" 진행중"+"]")
+        print("["+datas[cur_data_i]+" 데이터 진행중"+"]")
         # 윈도우 : \\ , 맥 : /
-        cur_path = dir_base + data_offset + "/" + datas[cur_data_i]
+        cur_path = dir_base + "/" + datas[cur_data_i]
         l_asm = os.listdir(cur_path)
         
         # 파일별로
@@ -211,7 +212,7 @@ def __main__():
             dq = deque([])
             # 100개마다 중간 진행사항 확인
             if(i%100==0):
-                print(str(i)+" - ",l_asm[i])
+                print(str(i)+"번째 asm파일 진행중")
             
             data_path = cur_path + "/" + l_asm[i]
             
@@ -227,7 +228,7 @@ def __main__():
     # ltop60값
     write_top60_2gram(c_ngram)
     
-    print("데이터 전처리 완료\n\n")
+    print("[데이터 전처리 완료]\n\n")
     
     # -------------------------
     # top60 2gram 가져오기
@@ -245,6 +246,7 @@ def __main__():
         dtop60_2gram[ltop60[i]] = 0
     #print(dtop60_2gram)
     
+    print("[csv파일 생성 시작]")
     k_top60 = ltop60.copy()
     # 폴더용(6개)
     #for cur_data_i in range(1): # TEST용
@@ -256,7 +258,7 @@ def __main__():
         
         print("["+datas[cur_data_i]+" 진행중"+"]")
         # 윈도우 : \\ , 맥 : /
-        cur_path = dir_base + data_offset + "/" + datas[cur_data_i]
+        cur_path = dir_base + "/" + datas[cur_data_i]
         l_asm = os.listdir(cur_path)
         
         # 파일별로
@@ -266,7 +268,7 @@ def __main__():
             tmp_l = list()
             c_dtop60_2gram = dtop60_2gram.copy()
             if(i%100==0):
-                print(str(i)+" - ",l_asm[i])
+                print(str(i)+"번째 asm파일 진행중")
                 #print(command_l)
             
             data_path = cur_path + "/" + l_asm[i]
@@ -314,13 +316,14 @@ def __main__():
         del tmp_ll
         del dq
         del c_dtop60_2gram
-        print("csv파일 생성 완료\n\n")
-    '''    
+        print(datas[cur_data_i],".csv파일 생성 완료\n")
+    print("[csv파일 생성 완료]\n")
+    '''
     # --------------------------
     # [ngram model]
     # ltop60
     # d_op_hex
-    
+    print("[model 시작]")
     read_top60_2gram()
     
     # test
@@ -330,6 +333,7 @@ def __main__():
     mal_test.insert(0, 'label',[1 for i in range(200)])
 
     op_test = pd.concat([be_test,mal_test], ignore_index=True)
+    print("=> test데이터 입력 완료")
     
     # train
     be_train = pd.read_csv("dataset/train__benign.csv",names=ltop60_2gram)
@@ -338,6 +342,7 @@ def __main__():
     mal_train.insert(0, 'label',[1 for i in range(1000)])
 
     op_train = pd.concat([be_train,mal_train], ignore_index=True)
+    print("=> train데이터 입력 완료")
     
     # validate
     be_val = pd.read_csv("dataset/valid__benign.csv",names=ltop60_2gram)
@@ -346,19 +351,20 @@ def __main__():
     mal_val.insert(0, 'label',[1 for i in range(200)])
 
     op_val = pd.concat([be_val,mal_val], ignore_index=True)
+    print("=> valid데이터 입력 완료")
     
     
     # shuffle
     op_train = shuffle(op_train , random_state=1000)
     op_val = shuffle(op_val, random_state=1000)
     op_test = shuffle(op_test, random_state=1000)
-    
-    print(op_train)
+    print("=> 데이터 셔플")
     
     # split data, label
     train_data, train_label = op_train.iloc[:, 1:], op_train['label']
     val_data, val_label = op_val.iloc[:, 1:], op_val['label']
     test_data, test_label = op_test.iloc[:, 1:], op_test['label']
+    print("=> label, data분리")
     
     # bring data
     train_data = train_data.values
@@ -370,12 +376,13 @@ def __main__():
     test_data = test_data.values
     test_label = test_label.values
     
-    
+    '''
     # confirm shape
     print(F"train_data shape : {train_data.shape}")
     print(F"train_label shape : {train_label.shape}")
     print(F"valid_data shape : {val_data.shape}")
     print(F"valid_label shape : {val_label.shape}")
+    '''
 
     # create model
     model = tf.keras.models.Sequential()
@@ -385,14 +392,16 @@ def __main__():
     model.compile(optimizer='rmsprop',
             loss='binary_crossentropy',
             metrics = ['accuracy'])
+    print("=> 모델 생성 및 컴파일")
     
     # 정규화
     n_train_data = normalization(train_data)
     n_valid_data = normalization(val_data)
     n_test_data = normalization(test_data)
+    print("=> 데이터 정규화")
     
-    hist = model.fit(n_train_data,train_label, epochs = 500 ,validation_data = (n_valid_data, val_label))
-    score = model.evaluate(n_test_data,test_label)
+    hist = model.fit(train_data,train_label, epochs = 500 ,validation_data = (val_data, val_label))
+    score = model.evaluate(test_data,test_label)
     print('정답률 = ', score[1],'loss=', score[0])
     
     # model.predict(test_data)
